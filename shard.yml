@@ -1,0 +1,13 @@
+name: wilt
+version: 0.1.0
+
+authors:
+  - your-name-here <your-email-here>
+
+targets:
+  wilt:
+    main: src/wilt.cr
+
+crystal: 1.9.2
+
+license: MIT
