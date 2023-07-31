@@ -1,4 +1,5 @@
 require "http/web_socket"
+require "option_parser"
 require "json"
 require "uri"
 
@@ -22,6 +23,26 @@ HISTORY_DEFAULTS = "A chat between a curious human and an artificial intelligenc
   "The assistant gives helpful, detailed, and polite answers to the user's questions.#{CONFIG_DEFAULTS["stop_sequence"]}" +
   "Assistant: Hi! how can I help you?#{CONFIG_DEFAULTS["stop_sequence"]}"
 
+# Writes the JSON defaults to the config file path
+def reset_config_file()
+  begin
+    File.write(CONFIG_FILE_PATH, CONFIG_DEFAULTS.to_json.to_s)
+  rescue error
+    puts "ERROR whilst writing \"#{CONFIG_FILE_PATH}\": #{error}"
+    exit 1
+  end
+end
+
+# Writes the JSON defaults to the history file path
+def reset_history_file()
+  begin
+    File.write(HISTORY_FILE_PATH, HISTORY_DEFAULTS)
+  rescue error
+    puts "ERROR whilst writing \"#{HISTORY_FILE_PATH}\": #{error}"
+    exit 1
+  end
+end
+
 # Make sure the configuration directory exists
 def init_config_dir()
   if !Dir.exists?(CONFIG_DIR_PATH)
@@ -37,24 +58,14 @@ end
 # Make sure the configuration file exists
 def init_config_file()
   if !File.exists?(CONFIG_FILE_PATH)
-    begin
-      File.write(CONFIG_FILE_PATH, CONFIG_DEFAULTS.to_json.to_s)
-    rescue error
-      puts "ERROR whilst writing \"#{CONFIG_FILE_PATH}\": #{error}"
-      exit 1
-    end
+    reset_config_file()
   end
 end
 
 # Make sure the history file exists
 def init_history_file()
   if !File.exists?(HISTORY_FILE_PATH)
-    begin
-      File.write(HISTORY_FILE_PATH, HISTORY_DEFAULTS)
-    rescue error
-      puts "ERROR whilst writing \"#{HISTORY_FILE_PATH}\": #{error}"
-      exit 1
-    end
+    reset_history_file()
   end
 end
 
@@ -84,6 +95,43 @@ end
 
 config = get_config_json()
 history = get_history_txt()
+
+OptionParser.parse do |parser|
+  parser.banner = "Usage: wilt [flag] | [prompt]"
+
+  parser.on("-h", "--help", "Prints this message") do
+    puts parser
+    exit
+  end
+
+  parser.on("-c", "--config", "Prints the configuration file path") do
+    puts CONFIG_FILE_PATH
+    exit
+  end
+
+  parser.on("-l", "--history", "Prints the history file path") do
+    puts HISTORY_FILE_PATH
+    exit
+  end
+
+  parser.on("-f", "--forget", "Forgets the previous conversation") do
+    reset_history_file()
+    exit
+  end
+
+  parser.on("-r", "--reset-config", "Resets the configuration file") do
+    reset_config_file()
+    exit
+  end
+
+  if ARGV.size == 0
+    puts "No arguments specified."
+    puts parser
+    exit
+  end
+end
+
+puts ARGV.join " "
 
 # inference = {
 #   "type" => "open_inference_session",
