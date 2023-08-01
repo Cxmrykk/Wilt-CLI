@@ -1,27 +1,30 @@
-# wilt
+<h1 align="center">~ Wilt ~</h1>
+<p align="center">TUI for Petals Chat (Web client endpoint)</p>
 
-TODO: Write a description here
+### Build
+Make sure `crystal` and `git` are installed on the user's system.
+```sh
+git clone https://github.com/Cxmrykk/Wilt.git
+cd Wilt
+crystal build ./src/wilt.cr
+```
+This will produce a binary named `wilt` in the current directory.
 
-## Installation
+### Execute
+```
+Usage: wilt [flag] | [prompt]
+    -h, --help                       Prints this message
+    -v, --version                    Prints the program version
+    -c, --config                     Prints the configuration file path
+    -l, --history                    Prints the history file path
+    -f, --forget                     Forgets the last conversation
+    -r, --reset-config               Resets the configuration file
+```
 
-TODO: Write installation instructions here
+### Configure
+Upon first execution, the program will generate a directory in the home folder containing `history.txt` and `config.json`. You can change the parameters in `config.json` as you like. Currently `top_k` and `top_p` are disabled. A list of parameters and their functionality can be found in the [Petals Chat Repository](https://github.com/petals-infra/chat.petals.dev).
 
-## Usage
-
-TODO: Write usage instructions here
-
-## Development
-
-TODO: Write development instructions here
-
-## Contributing
-
-1. Fork it (<https://github.com/your-github-user/wilt/fork>)
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create a new Pull Request
-
-## Contributors
-
-- [your-name-here](https://github.com/your-github-user) - creator and maintainer
+### Example
+```sh
+wilt "What is the capital of France?"
+```
