@@ -1,8 +1,8 @@
 name: wilt
-version: 0.1.0
+version: 0.0.1
 
 authors:
-  - your-name-here <your-email-here>
+  - Cameron Merrick 140925712+camerikk@users.noreply.github.com
 
 targets:
   wilt:
