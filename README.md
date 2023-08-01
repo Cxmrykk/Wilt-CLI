@@ -22,7 +22,7 @@ Usage: wilt [flag] | [prompt]
 ```
 
 ### Configure
-Upon first execution, the program will generate a directory in the home folder containing `history.txt` and `config.json`. You can change the parameters in `config.json` as you like. Currently `top_k` and `top_p` are disabled. A list of parameters and their functionality can be found in the [Petals Chat Repository](https://github.com/petals-infra/chat.petals.dev).
+Upon first execution, the program will generate a directory in the home folder containing `history.txt` and `config.json`. You can change the parameters in `config.json` as you like. Currently `top_k` and `top_p` are disabled. A list of parameters and their functionality can be found in the [Petals Chat Repository](https://github.com/petals-infra/chat.petals.dev#http-api-apiv1).
 
 ### Example
 ```sh
