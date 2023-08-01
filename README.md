@@ -1,5 +1,5 @@
 <h1 align="center">~ Wilt ~</h1>
-<p align="center">TUI for Petals Chat (Web client endpoint)</p>
+<p align="center">CLI for Petals Chat (Web client endpoint)</p>
 
 ### Build
 Make sure `crystal` and `git` are installed on the user's system.
