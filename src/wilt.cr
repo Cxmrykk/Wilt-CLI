@@ -1,5 +1,6 @@
 require "http/web_socket"
 require "option_parser"
+require "colorize"
 require "json"
 require "uri"
 
@@ -13,7 +14,7 @@ HISTORY_FILE_PATH = Path["~/.wilt/history.txt"].expand(home: true)
 
 # Default values (Used for program reset or first start)
 CONFIG_DEFAULTS = {
-  "wss-url" => "wss://chat.petals.dev/api/v2/generate",
+  "wss_url" => "wss://chat.petals.dev/api/v2/generate",
   "model" => "stabilityai/StableBeluga2",
   "stop_sequence" => "###",
   "extra_stop_sequences" => ["</s>"],
@@ -35,7 +36,7 @@ def reset_config_file()
   begin
     File.write(CONFIG_FILE_PATH, CONFIG_DEFAULTS.to_json.to_s)
   rescue error
-    puts "ERROR writing \"#{CONFIG_FILE_PATH}\": #{error}"
+    STDERR.puts "ERROR writing \"#{CONFIG_FILE_PATH}\": #{error}"
     exit 1
   end
 end
@@ -45,7 +46,7 @@ def reset_history_file(contents = CONFIG_DEFAULTS["start_prompt"])
   begin
     File.write(HISTORY_FILE_PATH, contents)
   rescue error
-    puts "ERROR writing \"#{HISTORY_FILE_PATH}\": #{error}"
+    STDERR.puts "ERROR writing \"#{HISTORY_FILE_PATH}\": #{error}"
     exit 1
   end
 end
@@ -56,7 +57,7 @@ def init_config_dir()
     begin
       Dir.mkdir(CONFIG_DIR_PATH)
     rescue error
-      puts "ERROR creating directory \"#{CONFIG_DIR_PATH}\": #{error}"
+      STDERR.puts "ERROR creating directory \"#{CONFIG_DIR_PATH}\": #{error}"
       exit 1
     end
   end
@@ -98,21 +99,21 @@ def get_config()
 
     # parse everything else using casting
     {
-      "wss-url": json["wss-url"].as_s,
-      "model": json["model"].as_s,
-      "stop_sequence": json["stop_sequence"].as_s,
-      "extra_stop_sequences": stop_sequences,
-      "start_prompt": json["start_prompt"].as_s,
-      "do_sample": json["do_sample"].as_i,
-      "temperature": json["temperature"].as_f,
-      #"top_k": json["top_k"].as_i,
-      #"top_p": json["top_p"].as_f,
-      "max_length": json["max_length"].as_i,
-      "max_new_tokens": json["max_new_tokens"].as_i,
+      wss_url: json["wss_url"].as_s,
+      model: json["model"].as_s,
+      stop_sequence: json["stop_sequence"].as_s,
+      extra_stop_sequences: stop_sequences,
+      start_prompt: json["start_prompt"].as_s,
+      do_sample: json["do_sample"].as_i,
+      temperature: json["temperature"].as_f,
+      #top_k: json["top_k"].as_i,
+      #top_p: json["top_p"].as_f,
+      max_length: json["max_length"].as_i,
+      max_new_tokens: json["max_new_tokens"].as_i,
     }
 
   rescue error
-    puts "ERROR parsing \"#{CONFIG_FILE_PATH}\": #{error}"
+    STDERR.puts "ERROR parsing \"#{CONFIG_FILE_PATH}\": #{error}"
     exit 1
   end
 end
@@ -124,13 +125,81 @@ def get_history()
   begin
     File.read(HISTORY_FILE_PATH)
   rescue error
-    puts "ERROR reading \"#{HISTORY_FILE_PATH}\": #{error}"
+    STDERR.puts "ERROR reading \"#{HISTORY_FILE_PATH}\": #{error}"
     exit 1
   end
 end
 
-config = get_config()
-history = get_history()
+def format_output_stream(response)
+  begin
+    match_multiline = response.match(/```.*```/m)
+
+    # find multiline matches (only use the first match)
+    if !match_multiline.nil?
+      start_pos = match_multiline.begin(0)
+      end_pos = match_multiline.end(0)
+
+      # rewrite the existing output lines
+      lines = response.lines.reverse
+      final = response.lines.size - 1
+
+      # replace the existing output
+      (0..final).each do |i|
+        line = lines[i]
+        print "\033[D" * line.size
+
+        # place cursor at beginning of next line
+        if i < final
+          print "\033[A"
+        end
+      end
+
+      # print the formatted response to output
+      print response[0, start_pos]
+      print response[start_pos, end_pos - start_pos].colorize.fore(:green).back(:black).bold()
+      print response[end_pos, response.size - end_pos]
+
+      # clear the response log
+      return ""
+    end
+
+    match_singleline = response.match(/`(?:[^`\n]+)`/)
+
+    if !match_singleline.nil?
+      start_pos = match_singleline.begin(0)
+      end_pos = match_singleline.end(0)
+
+      # rewrite the existing output lines
+      lines = response.lines.reverse
+      final = response.lines.size - 1
+
+      # replace the existing output
+      (0..final).each do |i|
+        line = lines[i]
+        print "\033[D" * line.size
+
+        # place cursor at beginning of next line
+        if i < final
+          print "\033[A"
+        end
+      end
+
+      # print the formatted response to output
+      print response[0, start_pos]
+      print response[start_pos, end_pos - start_pos].colorize.fore(:light_green).back(:black).bold()
+      print response[end_pos, response.size - end_pos]
+
+      # clear the response log
+      return ""
+    end
+
+    return response
+
+  rescue error
+    STDERR.puts "ERROR formatting output stream: #{error}"
+    exit 1
+  end
+end
 
 OptionParser.parse do |parser|
   parser.banner = "Usage: wilt [flag] | [prompt]"
@@ -156,6 +225,7 @@ OptionParser.parse do |parser|
   end
 
   parser.on("-f", "--forget", "Forgets the last conversation") do
+    config = get_config()
     reset_history_file(config["start_prompt"])
     exit
   end
@@ -165,17 +235,27 @@ OptionParser.parse do |parser|
     exit
   end
 
+  parser.invalid_option do |flag|
+    STDERR.puts "ERROR: #{flag} is not a valid option."
+    STDERR.puts parser
+    exit 1
+  end
+
   if ARGV.size == 0
-    puts "No arguments specified."
-    puts parser
+    STDERR.puts "ERROR: No arguments specified."
+    STDERR.puts parser
     exit
   end
 end
 
+config = get_config()
+history = get_history()
+
 # start websocket
 init = false
-prompt = "Human: #{ARGV.join(" ")}#{config["stop_sequence"]}Assistant: "
+prompt = "Human: #{ARGV.join(" ")}#{config["stop_sequence"]}Assistant:"
 response = ""
+response_log = ""
 
 spawn do
   message = ""
@@ -194,17 +274,17 @@ spawn do
     index += 1
 
     print message
-    print "\b" * (size + 1)
+    print "\033[D" * (size + 1)
     sleep(1/length)
   end
 
   # erase the loading sequence
   print " " * size
-  print "\b" * size
+  print "\033[D" * size
 end
 
 begin
-  url = URI.parse(config["wss-url"])
+  url = URI.parse(config["wss_url"])
   socket = HTTP::WebSocket.new(url)
 
   # handle received messages
@@ -221,10 +301,10 @@ begin
 
           # exit with error output
           if !data["traceback"]?.nil?
-            puts "ERROR received from server with traceback:\n\n#{data["traceback"]}"
+            STDERR.puts "ERROR received from server with traceback:\n\n#{data["traceback"]}"
             exit 1
           else
-            puts "ERROR received from server with no traceback (response.ok was false)"
+            STDERR.puts "ERROR received from server with no traceback (response.ok was false)"
             exit 1
           end
 
@@ -248,8 +328,14 @@ begin
     # send generate response to console
     if !data["outputs"]?.nil?
       outputs = data["outputs"].as_s
+
+      # append new output to response + logs
       response += outputs
+      response_log += outputs
       print outputs
+
+      # slice the log message to prevent dupicate formatting
+      response_log = format_output_stream(response_log)
 
       # close the socket when stop message received
       if !data["stop"]?.nil?
@@ -264,12 +350,12 @@ begin
             if response.ends_with?(sequence)
               trailer = sequence.size
 
-              # replace with the correct stop sequence
+              # set response to the correct stop sequence
               response = response[0, response.size - trailer]
               response += config["stop_sequence"]
 
-              # sanitise output (remove trailer)
-              print "\b" * trailer
+              # clear response output (remove trailer)
+              print "\033[D" * trailer
               print " " * trailer
               break
             end
@@ -279,7 +365,7 @@ begin
     end
 
     rescue error
-      puts "ERROR receiving response from server: #{error}"
+      STDERR.puts "ERROR receiving response from server: #{error}"
       exit 1
     end
   end
@@ -293,11 +379,11 @@ begin
 
   socket.run
 rescue error
-  puts "ERROR initialising websocket: #{error}"
+  STDERR.puts "ERROR initialising websocket: #{error}"
   exit 1
 end
 
-# flush output
+# end output stream
 print "\n"
 
 # update the history file
