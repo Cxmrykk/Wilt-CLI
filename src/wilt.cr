@@ -130,135 +130,6 @@ def get_history()
   end
 end
 
-# def format_output_stream(response)
-#   begin
-#     match_multiline = response.match(/```.*```/m)
-
-#     # find multiline matches (only use the first match)
-#     if !match_multiline.nil?
-#       start_pos = match_multiline.begin(0)
-#       end_pos = match_multiline.end(0)
-
-#       # rewrite the existing output lines
-#       lines = response.lines.reverse
-#       final = response.lines.size - 1
-
-#       # replace the existing output
-#       (0..final).each do |i|
-#         line = lines[i]
-#         print "\033[D" * line.size
-
-#         # place cursor at beginning of next line
-#         if i < final
-#           print "\033[A"
-#         end
-#       end
-
-#       # print the formatted response to output
-#       print response[0, start_pos]
-#       print response[start_pos, end_pos - start_pos].colorize.fore(:green).back(:black).bold()
-#       print response[end_pos, response.size - end_pos]
-
-#       # clear the response log
-#       return ""
-#     end
-
-#     match_singleline = response.match(/`(?:[^`\n]+)`/)
-
-#     if !match_singleline.nil?
-#       start_pos = match_singleline.begin(0)
-#       end_pos = match_singleline.end(0)
-
-#       # rewrite the existing output lines
-#       lines = response.lines.reverse
-#       final = response.lines.size - 1
-
-#       # replace the existing output
-#       (0..final).each do |i|
-#         line = lines[i]
-#         print "\033[D" * line.size
-
-#         # place cursor at beginning of next line
-#         if i < final
-#           print "\033[A"
-#         end
-#       end
-
-#       # print the formatted response to output
-#       print response[0, start_pos]
-#       print response[start_pos, end_pos - start_pos].colorize.fore(:light_green).back(:black).bold()
-#       print response[end_pos, response.size - end_pos]
-
-#       # clear the response log
-#       return ""
-#     end
-
-#     return response
-
-#   rescue error
-#     STDERR.puts "ERROR formatting output stream: #{error}"
-#     exit 1
-#   end
-# end
-
-def print_output_stream(log, outputs, ml, sl)
-  # verify if opening or closing multiline code block
-  if ml.value
-    ml_match = log.match(/\n```/m)
-    if ml_match.nil?
-      print outputs.colorize.fore(:green).back(:black).bold()
-      return log
-    else
-      ml.value = false
-      finish = ml_match.end()
-      index = outputs.size - (log.size - finish)
-      print outputs[0..index].colorize.fore(:green).back(:black).bold()
-      print outputs[index..outputs.size]
-      return log[finish..log.size]
-    end
-  else
-    ml_match = log.match(/```/m)
-    if !ml_match.nil?
-      ml.value = true
-      finish = ml_match.end()
-      index = outputs.size - (log.size - finish)
-      print outputs[0..index]
-      print outputs[index..outputs.size].colorize.fore(:green).back(:black).bold()
-      return log[finish..log.size]
-    end
-  end
-
-  # verify if opening or closing singleline code block
-  if sl.value
-    sl_match = log.match(/[^`]*`/)
-    if sl_match.nil?
-      print outputs.colorize.fore(:light_green).back(:black).bold()
-      return log
-    else
-      sl.value = false
-      finish = sl_match.end()
-      index = outputs.size - (log.size - finish)
-      print outputs[0..index].colorize.fore(:light_green).back(:black).bold()
-      print outputs[index..outputs.size]
-      return log[finish..log.size]
-    end
-  else
-    sl_match = log.match(/`[^`]*/)
-    if !sl_match.nil?
-      sl.value = true
-      finish = sl_match.end()
-      index = outputs.size - (log.size - finish)
-      print outputs[0..index].colorize.fore(:light_green).back(:black).bold()
-      print outputs[index..outputs.size]
-      return log[finish..log.size]
-    end
-  end
-
-  # no changes were made
-  print outputs
-  return log
-end
-
 OptionParser.parse do |parser|
   parser.banner = "Usage: wilt [flag] | [prompt]"
 
@@ -313,11 +184,6 @@ history = get_history()
 init = false
 prompt = "Human: #{ARGV.join(" ")}#{config["stop_sequence"]}Assistant:"
 response = ""
-
-# output formatting
-log = ""
-multiline = false
-singleline = false
 
 spawn do
   message = ""
@@ -393,12 +259,7 @@ begin
 
       # append new output to response + logs
       response += outputs
-      log += outputs
-
-      # slice the log message to prevent dupicate formatting
-      ml_pointer = pointerof(multiline)
-      sl_pointer = pointerof(singleline)
-      log = print_output_stream(log, outputs, ml_pointer, sl_pointer)
+      print outputs
 
       # close the socket when stop message received
       if !data["stop"]?.nil?
