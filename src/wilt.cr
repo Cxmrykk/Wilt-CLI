@@ -19,6 +19,7 @@ CONFIG_DEFAULTS = {
   "stop_sequence" => "###",
   "extra_stop_sequences" => ["</s>"],
   "start_prompt" => "A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.###Assistant: Hi! How can I help you?###",
+  "input_prompt" => "Human: {args}{stop_sequence}Assistant:",
   "do_sample" => 1,
   "temperature" => 0.2,
   "top_p" => 0.9,
@@ -87,6 +88,7 @@ def get_config()
       stop_sequence: json["stop_sequence"].as_s,
       extra_stop_sequences: stop_sequences,
       start_prompt: json["start_prompt"].as_s,
+      input_prompt: json["input_prompt"].as_s,
       do_sample: json["do_sample"].as_i,
       temperature: json["temperature"].as_f,
       max_length: json["max_length"].as_i,
@@ -167,8 +169,10 @@ history = get_history()
 
 # start websocket
 init = false
-prompt = "Human: #{ARGV.join(" ")}#{config["stop_sequence"]}Assistant:"
 response = ""
+prompt = config["input_prompt"]
+  .gsub("{args}", ARGV.join(" "))
+  .gsub("{stop_sequence}", config["stop_sequence"])
 
 begin
   url = URI.parse(config["wss_url"])
