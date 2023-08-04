@@ -21,65 +21,48 @@ CONFIG_DEFAULTS = {
   "start_prompt" => "A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.###Assistant: Hi! How can I help you?###",
   "do_sample" => 1,
   "temperature" => 0.2,
-  #"top_k" => 40,
-  #"top_p" => 0.9,
+  "top_p" => 0.9,
   "max_length" => 2048,
   "max_new_tokens" => 1,
 }
 
-# Messages
-LOADING_MESSAGE = "Loading... "
-LOADING_SEQUENCE = ["🌑", "🌘", "🌗", "🌖", "🌕", "🌔", "🌓", "🌒"]
-
-# Writes the JSON defaults to the config file path
-def reset_config_file()
-  begin
-    File.write(CONFIG_FILE_PATH, CONFIG_DEFAULTS.to_json.to_s)
-  rescue error
-    STDERR.puts "ERROR writing \"#{CONFIG_FILE_PATH}\": #{error}"
-    exit 1
-  end
-end
-
-# Writes the JSON defaults to the history file path
-def reset_history_file(contents = CONFIG_DEFAULTS["start_prompt"])
-  begin
-    File.write(HISTORY_FILE_PATH, contents)
-  rescue error
-    STDERR.puts "ERROR writing \"#{HISTORY_FILE_PATH}\": #{error}"
-    exit 1
-  end
-end
-
-# Make sure the configuration directory exists
-def init_config_dir()
-  if !Dir.exists?(CONFIG_DIR_PATH)
+def check_mkdir(path)
+  if !Dir.exists?(path)
     begin
-      Dir.mkdir(CONFIG_DIR_PATH)
+      Dir.mkdir(path)
     rescue error
-      STDERR.puts "ERROR creating directory \"#{CONFIG_DIR_PATH}\": #{error}"
+      STDERR.puts "ERROR creating directory \"#{path}\": #{error}"
       exit 1
     end
+  end
+end
+
+def mkfile(path, contents)
+  begin
+    File.write(path, contents)
+  rescue error
+    STDERR.puts "ERROR writing file \"#{path}\": #{error}"
+    exit 1
   end
 end
 
 # Make sure the configuration file exists
 def init_config_file()
   if !File.exists?(CONFIG_FILE_PATH)
-    reset_config_file()
+    mkfile(CONFIG_FILE_PATH, CONFIG_DEFAULTS.to_json.to_s)
   end
 end
 
 # Make sure the history file exists
 def init_history_file()
   if !File.exists?(HISTORY_FILE_PATH)
-    reset_history_file()
+    mkfile(HISTORY_FILE_PATH, CONFIG_DEFAULTS["start_prompt"])
   end
 end
 
 # Return the contents of the config file parsed as JSON
 def get_config()
-  init_config_dir()
+  check_mkdir(CONFIG_DIR_PATH)
   init_config_file()
   begin
     json = JSON.parse(File.read(CONFIG_FILE_PATH))
@@ -106,10 +89,10 @@ def get_config()
       start_prompt: json["start_prompt"].as_s,
       do_sample: json["do_sample"].as_i,
       temperature: json["temperature"].as_f,
-      #top_k: json["top_k"].as_i,
-      #top_p: json["top_p"].as_f,
       max_length: json["max_length"].as_i,
       max_new_tokens: json["max_new_tokens"].as_i,
+      top_k: json["top_k"]?.try(&.as_i),
+      top_p: json["top_p"]?.try(&.as_f)
     }
 
   rescue error
@@ -120,7 +103,7 @@ end
 
 # Return the string contents of the history file
 def get_history()
-  init_config_dir()
+  check_mkdir(CONFIG_DIR_PATH)
   init_history_file()
   begin
     File.read(HISTORY_FILE_PATH)
@@ -155,12 +138,14 @@ OptionParser.parse do |parser|
 
   parser.on("-f", "--forget", "Forgets the last conversation") do
     config = get_config()
-    reset_history_file(config["start_prompt"])
+    mkfile(HISTORY_FILE_PATH, config["start_prompt"])
+    puts "Successfully reset \"#{HISTORY_FILE_PATH}\""
     exit
   end
 
   parser.on("-r", "--reset-config", "Resets the configuration file") do
-    reset_config_file()
+    mkfile(CONFIG_FILE_PATH, CONFIG_DEFAULTS.to_json.to_s)
+    puts "Successfully reset \"#{CONFIG_FILE_PATH}\""
     exit
   end
 
@@ -184,32 +169,6 @@ history = get_history()
 init = false
 prompt = "Human: #{ARGV.join(" ")}#{config["stop_sequence"]}Assistant:"
 response = ""
-
-spawn do
-  message = ""
-  length = LOADING_SEQUENCE.size
-  size = 0
-  index = 0
-
-  # send loading sequence until init is ok
-  while !init
-    if index >= length
-      index = 0
-    end
-
-    message = LOADING_MESSAGE + LOADING_SEQUENCE[index]
-    size = message.size
-    index += 1
-
-    print message
-    print "\033[D" * (size + 1)
-    sleep(1/length)
-  end
-
-  # erase the loading sequence
-  print " " * size
-  print "\033[D" * size
-end
 
 begin
   url = URI.parse(config["wss_url"])
@@ -246,8 +205,8 @@ begin
             "extra_stop_sequences" => config["extra_stop_sequences"],
             "do_sample" => config["do_sample"],
             "temperature" => config["temperature"],
-            #"top_k" => config["top_k"],
-            #"top_p" => config["top_p"],
+            "top_k" => config["top_k"],
+            "top_p" => config["top_p"],
             "max_new_tokens" => config["max_new_tokens"],
           }.to_json)
         end
@@ -311,4 +270,4 @@ end
 print "\n"
 
 # update the history file
-reset_history_file("#{history}#{prompt}#{response}")
+mkfile(HISTORY_FILE_PATH, "#{history}#{prompt}#{response}")
