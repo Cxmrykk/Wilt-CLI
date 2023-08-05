@@ -2,7 +2,7 @@ name: wilt
 version: 0.0.1
 
 authors:
-  - Cameron Merrick 140925712+camerikk@users.noreply.github.com
+  - Cameron Merrick <140925712+camerikk@users.noreply.github.com>
 
 targets:
   wilt:
