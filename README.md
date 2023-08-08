@@ -1,6 +1,22 @@
 <h1 align="center">~ Wilt ~</h1>
 <p align="center">CLI for Petals Chat (Web client endpoint)</p>
 
+### Installing
+#### APT-based distros (Debian, Ubuntu, etc.)
+1. Import the public key to `/usr/share/keyrings`
+```sh
+sudo curl -o /usr/share/keyrings/cxmrykk-archive-keyring.gpg https://repo.merrick.cam/pub.gpg
+```
+2. Save the repository to `/etc/apt/sources.list.d/`
+```sh
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/cxmrykk-archive-keyring.gpg] http://repo.merrick.cam/ stable main" \
+    | sudo tee /etc/apt/sources.list.d/cxmrykk.list
+```
+3. Update & install
+```sh
+sudo apt update && sudo apt install wilt
+```
+
 ### Building
 Make sure `crystal` and `git` are installed on the user's system.
 ```sh
