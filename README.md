@@ -2,7 +2,7 @@
 <p align="center">CLI for Petals Chat (Web client endpoint)</p>
 
 ### Installing
-#### Using apt (Debian-based distros)
+**Using `apt` (Debian-based distros)**
 1. Import the public key to `/usr/share/keyrings`
 ```sh
 sudo curl -o /usr/share/keyrings/cxmrykk-archive-keyring.gpg https://repo.merrick.cam/pub.gpg
